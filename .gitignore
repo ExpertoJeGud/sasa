@@ -1,21 +1,35 @@
 const express = require("express");
 const axios = require("axios");
+const next = require("next");
 
-const app = express();
+const dev = process.env.NODE_ENV !== "production";
+const app = next({ dev });
+const handle = app.getRequestHandler(); // Next.js request handler
+
+const server = express();
 const PORT = 3000;
 
-app.get("/badge/:id", async (req, res) => {
-    const badgeID = req.params.id;
-    const url = `https://badges.roblox.com/v1/badges/${badgeID}`;
+// Prepare Next.js before setting up routes
+app.prepare().then(() => {
+    // API route to fetch badge data
+    server.get("/badge/:id", async (req, res) => {
+        const badgeID = req.params.id;
+        const url = `https://badges.roblox.com/v1/badges/${badgeID}`;
 
-    try {
-        const response = await axios.get(url);
-        res.json(response.data);
-    } catch (error) {
-        res.status(500).send("Failed to fetch badge data");
-    }
-});
+        try {
+            const response = await axios.get(url);
+            res.json(response.data);
+        } catch (error) {
+            res.status(500).send("Failed to fetch badge data");
+        }
+    });
 
-app.listen(PORT, () => {
-    console.log(`Proxy server running on http://localhost:${PORT}`);
+    // All other routes are handled by Next.js
+    server.all("*", (req, res) => {
+        return handle(req, res);
+    });
+
+    server.listen(PORT, () => {
+        console.log(`Server running at http://localhost:${PORT}`);
+    });
 });
